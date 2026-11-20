@@ -86,6 +86,15 @@ Section "MatchRoute"
 SectionEnd
 
 Section "Uninstall"
+    nsExec::Exec '"$SYSDIR\schtasks.exe" /Delete /TN "\MatchRoute AutoStart" /F /HRESULT'
+    Pop $0
+    ${If} $0 != 0
+    ${AndIf} $0 != -2147024894
+    ${AndIf} $0 != 2147942402
+        MessageBox MB_OK|MB_ICONSTOP "Не удалось удалить задачу автозапуска MatchRoute." /SD IDOK
+        SetErrorLevel 3
+        Abort
+    ${EndIf}
     SetShellVarContext all
     Delete "$SMPROGRAMS\MatchRoute.lnk"
     Delete "$INSTDIR\MatchRoute.exe"

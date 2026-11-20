@@ -201,7 +201,6 @@ func smallIconSize() int {
 // run creates the hidden window and the icon, then serves their messages; call in a goroutine
 func (t *tray) run() {
 	runtime.LockOSThread()
-	t.ready = make(chan struct{})
 	inst, _, _ := pGetModuleHandleW.Call(0)
 	cls, _ := windows.UTF16PtrFromString(trayClass)
 	wc := wndClassEx{WndProc: windows.NewCallback(t.wndProc), Instance: windows.Handle(inst), ClassName: cls}
@@ -330,16 +329,18 @@ func (t *tray) menu(hwnd windows.Handle) {
 	}
 }
 
-// otherInstance: if fnport already runs, ask it to show its window; true means "quit now"
-func otherInstance() bool {
+// otherInstance prevents duplicate processes. Only a manual launch raises the window.
+func otherInstance(show bool) bool {
 	name, _ := windows.UTF16PtrFromString("Local\\matchroute-windows")
 	_, err := windows.CreateMutex(nil, false, name)
 	if err != windows.ERROR_ALREADY_EXISTS {
 		return false
 	}
-	cls, _ := windows.UTF16PtrFromString(trayClass)
-	if w, _, _ := pFindWindowW.Call(uintptr(unsafe.Pointer(cls)), 0); w != 0 {
-		pPostMessageW.Call(w, wmShow, 0, 0)
+	if show {
+		cls, _ := windows.UTF16PtrFromString(trayClass)
+		if w, _, _ := pFindWindowW.Call(uintptr(unsafe.Pointer(cls)), 0); w != 0 {
+			pPostMessageW.Call(w, wmShow, 0, 0)
+		}
 	}
 	return true
 }

@@ -99,6 +99,11 @@ const (
 
 var tabNames = []string{"Обзор", "Сеансы", "Журнал", "Подключения", "Настройки"}
 
+type startupResult struct {
+	on  bool
+	err error
+}
+
 type view struct {
 	switches    map[*widget.Bool]*switchMotion
 	connections connectionView
@@ -139,36 +144,43 @@ type view struct {
 	openUpdate widget.Clickable
 
 	// settings: a draft edited here, applied with "Save"
-	page        widget.List
-	draftFor    uint64 // changes counter when the draft was taken; 0 = take it again
-	adapter     widget.Enum
-	fake        widget.Enum
-	ttl         int
-	ttlMinus    widget.Clickable
-	ttlPlus     widget.Clickable
-	routes      widget.Editor
-	ports       widget.Editor
-	batch       widget.Editor
-	rounds      widget.Editor
-	budget      widget.Editor
-	passthru    widget.Bool
-	warpPage    widget.List
-	warpSpeed   widget.Clickable
-	warpReg     widget.Clickable
-	save        widget.Clickable
-	reset       widget.Clickable
-	openFakes   widget.Clickable
-	licenses    widget.Clickable
-	runCheck    widget.Clickable
-	applyCheck  widget.Clickable
-	checkDone   chan error // completion delivered back to the UI thread
-	checkMsg    string
-	checkErr    bool
-	adapters    []wnet.IfaceInfo
-	autoAdapter string // resolved when the settings draft is loaded, not while drawing
-	fakeFiles   []fakes.File
-	saveMsg     string
-	saveErr     bool
+	page           widget.List
+	draftFor       uint64 // changes counter when the draft was taken; 0 = take it again
+	adapter        widget.Enum
+	fake           widget.Enum
+	ttl            int
+	ttlMinus       widget.Clickable
+	ttlPlus        widget.Clickable
+	routes         widget.Editor
+	ports          widget.Editor
+	batch          widget.Editor
+	rounds         widget.Editor
+	budget         widget.Editor
+	passthru       widget.Bool
+	warpPage       widget.List
+	warpSpeed      widget.Clickable
+	warpReg        widget.Clickable
+	save           widget.Clickable
+	reset          widget.Clickable
+	openFakes      widget.Clickable
+	licenses       widget.Clickable
+	runCheck       widget.Clickable
+	applyCheck     widget.Clickable
+	checkDone      chan error // completion delivered back to the UI thread
+	checkMsg       string
+	checkErr       bool
+	adapters       []wnet.IfaceInfo
+	autoAdapter    string // resolved when the settings draft is loaded, not while drawing
+	fakeFiles      []fakes.File
+	saveMsg        string
+	saveErr        bool
+	startupRead    func() (bool, error)
+	startupWrite   func(bool) error
+	startupHint    string
+	startupButton  widget.Clickable
+	startupPending chan startupResult
+	startupLoaded  bool
+	startupState   startupResult
 }
 
 func newView(ctl *controller, ping *pinger, check *checker, open func(string), onQuit func()) *view {
@@ -1177,6 +1189,7 @@ func (v *view) settingsTab(gtx C) D {
 		}
 	}
 	sections := []layout.Widget{
+		v.startupCard,
 		func(gtx C) D { return v.checkCard(gtx, running, lines, res, wait) },
 		v.themeCard,
 		v.adapterCard,
@@ -1213,6 +1226,66 @@ func (v *view) settingsTab(gtx C) D {
 				hspace(14),
 				layout.Flexed(1, v.label(13, msgC, v.saveMsg).Layout))
 		}))
+}
+
+func (v *view) runStartupAction(action func() (bool, error)) {
+	done := make(chan startupResult, 1)
+	v.startupPending = done
+	go func() {
+		on, err := action()
+		done <- startupResult{on: on, err: err}
+		changes.Add(1)
+	}()
+}
+
+func (v *view) startupCard(gtx C) D {
+	if v.startupRead == nil && v.startupHint == "" {
+		return D{}
+	}
+	hint := "После входа в Windows MatchRoute останется в трее и включится с сохранёнными настройками."
+	if v.startupRead == nil {
+		hint = v.startupHint
+	} else if !v.startupLoaded && v.startupPending == nil {
+		v.runStartupAction(v.startupRead)
+	}
+	if v.startupPending != nil {
+		select {
+		case v.startupState = <-v.startupPending:
+			v.startupLoaded, v.startupPending = true, nil
+		default:
+		}
+	}
+	if v.startupRead != nil && v.startupPending == nil && v.startupButton.Clicked(gtx) {
+		if v.startupState.err != nil {
+			v.runStartupAction(v.startupRead)
+		} else {
+			enable := !v.startupState.on
+			v.runStartupAction(func() (bool, error) {
+				if err := v.startupWrite(enable); err != nil {
+					return false, err
+				}
+				return v.startupRead()
+			})
+		}
+	}
+	return v.card(gtx, func(gtx C) D {
+		children := v.sectionTitle("Автозапуск и автовключение", hint)
+		if v.startupRead != nil {
+			label := "Включить автозапуск"
+			if v.startupPending != nil {
+				label = "Проверяем автозапуск…"
+			} else if v.startupState.err != nil {
+				label = "Проверить снова"
+				children = append(children, layout.Rigid(v.label(13, colRed, v.startupState.err.Error()).Layout), vspace(8))
+			} else if v.startupState.on {
+				label = "Отключить автозапуск"
+			}
+			children = append(children, layout.Rigid(func(gtx C) D {
+				return v.button(gtx, &v.startupButton, label, !v.startupState.on, v.startupPending == nil)
+			}))
+		}
+		return layout.Flex{Axis: layout.Vertical}.Layout(gtx, children...)
+	})
 }
 
 func (v *view) sectionTitle(s, hint string) []layout.FlexChild {

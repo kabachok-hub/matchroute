@@ -102,7 +102,11 @@ func TestWarpAllowedCountriesAndFallback(t *testing.T) {
 func TestWarpProbeRequiresFullDownload(t *testing.T) {
 	for _, size := range []int{256 << 10, warpProbeBytes} {
 		t.Run(time.Duration(size).String(), func(t *testing.T) {
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.CopyN(w, zeroReader{}, int64(size)) }))
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// A loopback download can otherwise finish inside one Windows clock tick.
+				time.Sleep(20 * time.Millisecond)
+				io.CopyN(w, zeroReader{}, int64(size))
+			}))
 			defer srv.Close()
 			d, why := measureWarpDownload(context.Background(), srv.Client(), srv.URL+"/")
 			if size < warpProbeBytes {

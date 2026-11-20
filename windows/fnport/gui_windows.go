@@ -48,6 +48,16 @@ func (g *gui) show() {
 		return
 	}
 	win := &window{g: g, w: new(app.Window), v: newView(g.ctl, &g.ping, &g.check, openPath, func() { g.quitApp() })}
+	task, err := installedStartupTask()
+	if err != nil {
+		win.v.startupHint = err.Error()
+	} else {
+		win.v.startupRead = func() (bool, error) {
+			_, enabled, err := task.status()
+			return enabled, err
+		}
+		win.v.startupWrite = task.set
+	}
 	g.open = win
 	g.mu.Unlock()
 	go win.run()

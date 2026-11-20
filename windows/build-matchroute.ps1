@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = 'v0.1.2',
+    [string]$Version = 'v0.1.3',
     [string]$Go = 'go',
     [string]$MakeNSIS = 'makensis',
     [string]$OutputDirectory = 'dist'

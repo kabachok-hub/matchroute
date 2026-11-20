@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 	"unsafe"
 
@@ -25,8 +26,8 @@ import (
 )
 
 func main() {
-	// a second start shows the window of the first one
-	if otherInstance() {
+	atLogon := slices.Contains(os.Args[1:], startupArgument)
+	if otherInstance(!atLogon) {
 		return
 	}
 	openLog()
@@ -59,15 +60,18 @@ func main() {
 	ctl := newController(set)
 	g := &gui{ctl: ctl}
 	g.check.tunnel = ctl.warpTunnel
-	t := &tray{onOpen: g.show, onToggle: ctl.toggle, onQuit: g.quitApp, accent: icon.Gray, tip: "MatchRoute: выключен",
+	t := &tray{onOpen: g.show, onToggle: ctl.toggle, onQuit: g.quitApp, accent: icon.Gray, tip: "MatchRoute: выключен", ready: make(chan struct{}),
 		isOn: func() bool { st, _ := ctl.state(); return st == stateOn }}
 	g.tray = t
 	go t.run()
 	// the tray icon's colour follows the state
 	go func() {
 		for {
-			st, _ := ctl.state()
+			st, why := ctl.state()
 			accent, tip := icon.Gray, "MatchRoute: выключен"
+			if st == stateOff && why != "" {
+				accent, tip = icon.Yellow, "MatchRoute: запуск не удался"
+			}
 			if st == stateOn {
 				accent, tip = icon.Green, "MatchRoute: работает"
 				if ctl.warn() {
@@ -78,7 +82,17 @@ func main() {
 			time.Sleep(time.Second)
 		}
 	}()
-	g.show()
+	if atLogon {
+		go func() {
+			logf("автозапуск: включение с сохранёнными настройками")
+			ctl.start()
+			if st, why := ctl.state(); st == stateOff && why != "" {
+				t.balloon("MatchRoute: автозапуск", why)
+			}
+		}()
+	} else {
+		g.show()
+	}
 	app.Main()
 }
 
