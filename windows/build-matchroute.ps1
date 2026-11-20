@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$Version = 'v0.1.0',
+    [string]$Version = 'v0.1.2',
     [string]$Go = 'go',
+    [string]$MakeNSIS = 'makensis',
     [string]$OutputDirectory = 'dist'
 )
 
@@ -10,6 +11,7 @@ if ($Version -notmatch '^v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$') {
     throw 'Version must have the form v0.1.0.'
 }
 $Go = (Get-Command $Go -CommandType Application).Source
+$MakeNSIS = (Get-Command $MakeNSIS -CommandType Application).Source
 $root = Split-Path -Parent $PSScriptRoot
 $env:CGO_ENABLED = '0'
 $env:GOTOOLCHAIN = 'local'
@@ -99,13 +101,27 @@ try {
     $env:FNPORT_TEST_SING_BOX = $core
     Invoke-Go vet ./...
     Invoke-Go test -count=1 ./fnport
-    Invoke-Go build -trimpath -ldflags "-s -w -H windowsgui -X main.version=$Version -X main.devTrace=off" -o (Join-Path $bundle.FullName 'MatchRoute.exe') ./fnport
+    $app = Join-Path $bundle.FullName 'MatchRoute.exe'
+    Invoke-Go build -trimpath -ldflags "-s -w -H windowsgui -X main.version=$Version -X main.devTrace=off" -o $app ./fnport
 
-    $zip = Join-Path $out.FullName "$bundleName.zip"
-    Compress-Archive -LiteralPath $bundle.FullName -DestinationPath $zip -Force
-    $digest = Get-FileHash -LiteralPath $zip -Algorithm SHA256
-    "$($digest.Hash.ToLowerInvariant())  $bundleName.zip" | Set-Content -LiteralPath (Join-Path $out.FullName 'SHA256SUMS.txt') -Encoding ascii
-    Get-Item -LiteralPath $zip
+    Add-Type -AssemblyName System.Drawing
+    $iconPath = Join-Path $cache.FullName 'matchroute.ico'
+    $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($app)
+    $iconFile = [System.IO.File]::Create($iconPath)
+    try {
+        $icon.Save($iconFile)
+    } finally {
+        $iconFile.Dispose()
+        $icon.Dispose()
+    }
+    $setupName = "$bundleName-setup.exe"
+    $setup = Join-Path $out.FullName $setupName
+    $numericVersion = $Version.TrimStart('v').Split('-')[0]
+    & $MakeNSIS /INPUTCHARSET UTF8 "/DAPP_VERSION=$numericVersion" "/DPAYLOAD=$($bundle.FullName)" "/DAPP_ICON=$iconPath" "/DSETUP_OUTPUT=$setup" 'matchroute.nsi'
+    if ($LASTEXITCODE -ne 0) { throw 'NSIS compilation failed.' }
+    $digest = Get-FileHash -LiteralPath $setup -Algorithm SHA256
+    "$($digest.Hash.ToLowerInvariant())  $setupName" | Set-Content -LiteralPath (Join-Path $out.FullName 'SHA256SUMS.txt') -Encoding ascii
+    Get-Item -LiteralPath $setup
 } finally {
     Pop-Location
 }
