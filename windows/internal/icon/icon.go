@@ -1,99 +1,63 @@
-// Package icon renders the MatchRoute icon and the tray status indicator.
+// Package icon renders the MatchRoute avatar and its tray status indicator.
 package icon
 
 import (
 	"bytes"
+	_ "embed"
 	"image"
 	"image/color"
 	"image/png"
 	"math"
+
+	"golang.org/x/image/draw"
 )
 
 var (
 	Green  = color.NRGBA{0x22, 0xc5, 0x5e, 0xff}
 	Yellow = color.NRGBA{0xea, 0xb3, 0x08, 0xff}
 	Gray   = color.NRGBA{0x94, 0xa3, 0xb8, 0xff}
-	None   = color.NRGBA{} // no dot
-
-	bgTop     = color.NRGBA{0x1a, 0x1d, 0x2e, 0xff}
-	bgBottom  = color.NRGBA{0x08, 0x09, 0x10, 0xff}
-	routeMint = color.NRGBA{0x67, 0xe8, 0xc8, 0xff}
-	edge      = color.NRGBA{0x08, 0x09, 0x10, 0xff}
+	None   = color.NRGBA{}
 )
 
-func routeStroke(x, y, ax, ay, bx, by float64) bool {
-	dx, dy := bx-ax, by-ay
-	t := math.Max(0, math.Min(1, ((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)))
-	return math.Hypot(x-ax-t*dx, y-ay-t*dy) <= 4.5
-}
+// avatar.png is the application-sized copy of docs/img/matchroute-avatar.png.
+//
+//go:embed avatar.png
+var avatarPNG []byte
 
-func lerp(a, b color.NRGBA, t float64) color.NRGBA {
-	t = math.Max(0, math.Min(1, t))
-	m := func(x, y uint8) uint8 { return uint8(float64(x)*(1-t) + float64(y)*t + 0.5) }
-	return color.NRGBA{m(a.R, b.R), m(a.G, b.G), m(a.B, b.B), 0xff}
-}
+var avatar = func() image.Image {
+	img, err := png.Decode(bytes.NewReader(avatarPNG))
+	if err != nil {
+		panic(err)
+	}
+	return img
+}()
 
-// Draw renders the icon at size×size (4×4 supersampling); dot != None adds the state dot
+// Draw scales the avatar and optionally overlays the status dot used in the tray.
 func Draw(size int, dot color.NRGBA) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
-	k := 100 / float64(size)
-	const n = 4
-	for py := 0; py < size; py++ {
-		for px := 0; px < size; px++ {
-			var r, g, b, a float64
-			for sy := 0; sy < n; sy++ {
-				for sx := 0; sx < n; sx++ {
-					x := (float64(px) + (float64(sx)+0.5)/n) * k
-					y := (float64(py) + (float64(sy)+0.5)/n) * k
-					c, ok := sample(x, y, dot)
-					if !ok {
-						continue
-					}
-					r, g, b, a = r+float64(c.R), g+float64(c.G), b+float64(c.B), a+1
-				}
+	draw.CatmullRom.Scale(img, img.Bounds(), avatar, avatar.Bounds(), draw.Src, nil)
+	if dot == None {
+		return img
+	}
+	center := float64(size) * 0.80
+	radius := float64(size) * 0.135
+	border := math.Max(float64(size)*0.04, 1)
+	outline := color.NRGBA{0x08, 0x12, 0x26, 0xff}
+	for y := max(0, int(center-radius-border)); y < size; y++ {
+		for x := max(0, int(center-radius-border)); x < size; x++ {
+			d := math.Hypot(float64(x)+0.5-center, float64(y)+0.5-center)
+			switch {
+			case d <= radius:
+				img.SetNRGBA(x, y, dot)
+			case d <= radius+border:
+				img.SetNRGBA(x, y, outline)
 			}
-			if a == 0 {
-				continue
-			}
-			img.SetNRGBA(px, py, color.NRGBA{uint8(r/a + 0.5), uint8(g/a + 0.5), uint8(b/a + 0.5), uint8(a/(n*n)*255 + 0.5)})
 		}
 	}
 	return img
 }
 
-// sample: the colour at (x, y) in the 100x100 box; false outside the icon
-func sample(x, y float64, dot color.NRGBA) (color.NRGBA, bool) {
-	if dot != None {
-		const cx, cy, r = 80, 80, 17
-		d := math.Hypot(x-cx, y-cy)
-		if d <= r {
-			return dot, true
-		}
-		if d <= r+5 {
-			return edge, true // a ring of background keeps the dot apart from the letters
-		}
-	}
-	if !inRoundRect(x, y, 100, 22) {
-		return color.NRGBA{}, false
-	}
-	if routeStroke(x, y, 23, 68, 48, 43) ||
-		routeStroke(x, y, 48, 43, 69, 64) ||
-		routeStroke(x, y, 48, 43, 72, 20) ||
-		math.Hypot(x-23, y-68) <= 8 ||
-		math.Hypot(x-48, y-43) <= 8 ||
-		math.Hypot(x-72, y-20) <= 8 {
-		return routeMint, true
-	}
-	return lerp(bgTop, bgBottom, y/100), true
-}
-
-func inRoundRect(x, y, s, r float64) bool {
-	cx := math.Max(r, math.Min(s-r, x))
-	cy := math.Max(r, math.Min(s-r, y))
-	return math.Hypot(x-cx, y-cy) <= r
-}
-
-// PNG: the icon as PNG bytes
+// PNG returns the icon as a PNG file.
 func PNG(size int, dot color.NRGBA) []byte {
 	var b bytes.Buffer
 	png.Encode(&b, Draw(size, dot))

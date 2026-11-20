@@ -199,7 +199,6 @@ func newView(ctl *controller, ping *pinger, check *checker, open func(string), o
 	for _, e := range []*widget.Editor{&v.batch, &v.rounds, &v.budget} {
 		e.SingleLine, e.Filter = true, "0123456789"
 	}
-	checkUpdateOnce()
 	return v
 }
 
@@ -431,7 +430,9 @@ func (v *view) frame(gtx C) {
 		}
 	}
 	if v.openUpdate.Clicked(gtx) && v.open != nil {
-		v.open(releasesURL)
+		if up := updateInfo.Load(); up != nil {
+			v.open(up.setup)
+		}
 	}
 	v.animating = false
 	paint.Fill(gtx.Ops, colBg)
@@ -478,8 +479,8 @@ func (v *view) header(gtx C) D {
 							layout.Rigid(bold(v.label(21, colText, "MatchRoute")).Layout),
 							layout.Flexed(1, func(gtx C) D { return D{Size: image.Pt(gtx.Constraints.Min.X, 0)} }),
 							layout.Rigid(func(gtx C) D {
-								if up := latestUpdate(); up != "" {
-									return v.openUpdate.Layout(gtx, v.label(12, colGreen, "Доступна v"+up).Layout)
+								if up := updateInfo.Load(); up != nil {
+									return v.button(gtx, &v.openUpdate, "Скачать обновление v"+up.version, true, true)
 								}
 								return mono(v.label(12, colMuted, version)).Layout(gtx)
 							}),

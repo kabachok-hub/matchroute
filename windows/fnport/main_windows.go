@@ -56,6 +56,7 @@ func main() {
 	}
 	// pings to the beacons leave by the physical interface even while the adapter is up
 	usePhysical(set.Adapter)
+	startUpdateChecks()
 
 	ctl := newController(set)
 	g := &gui{ctl: ctl}

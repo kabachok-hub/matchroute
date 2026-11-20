@@ -22,7 +22,7 @@ require (
 	github.com/klauspost/compress v1.17.4 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/exp/shiny v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
-	golang.org/x/image v0.26.0 // indirect
+	golang.org/x/image v0.26.0
 	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
