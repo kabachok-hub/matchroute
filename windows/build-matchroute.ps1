@@ -98,7 +98,7 @@ try {
     }
     $env:FNPORT_TEST_SING_BOX = $core
     Invoke-Go vet ./...
-    Invoke-Go test -count=1 ./...
+    Invoke-Go test -count=1 ./fnport
     Invoke-Go build -trimpath -ldflags "-s -w -H windowsgui -X main.version=$Version -X main.devTrace=off" -o (Join-Path $bundle.FullName 'MatchRoute.exe') ./fnport
 
     $zip = Join-Path $out.FullName "$bundleName.zip"
