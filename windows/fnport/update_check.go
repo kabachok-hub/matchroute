@@ -17,7 +17,7 @@ import (
 	"github.com/YUNGSLXRD/fnport/windows/internal/wnet"
 )
 
-const releasesURL = "https://github.com/YUNGSLXRD/fnport/releases/latest"
+const releasesURL = "https://github.com/kabachok-hub/matchroute/releases/latest"
 
 var (
 	updateOnce sync.Once
@@ -52,12 +52,12 @@ func checkUpdateOnce() {
 				},
 			}
 			defer tr.CloseIdleConnections()
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/YUNGSLXRD/fnport/releases/latest", nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/kabachok-hub/matchroute/releases/latest", nil)
 			if err != nil {
 				return
 			}
 			req.Header.Set("Accept", "application/vnd.github+json")
-			req.Header.Set("User-Agent", "fnport/"+version)
+			req.Header.Set("User-Agent", "MatchRoute/"+version)
 			resp, err := (&http.Client{Transport: tr, Timeout: 3 * time.Second}).Do(req)
 			if err != nil {
 				return
@@ -74,7 +74,8 @@ func checkUpdateOnce() {
 			if json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&release) != nil || release.Draft || release.Pre {
 				return
 			}
-			remote := strings.TrimPrefix(strings.TrimSpace(release.TagName), "v")
+			tag := strings.TrimPrefix(strings.TrimSpace(release.TagName), "matchroute-")
+			remote := strings.TrimPrefix(tag, "v")
 			if newerSemver(remote, strings.TrimPrefix(version, "v")) {
 				updateTag.Store(remote)
 				changes.Add(1)

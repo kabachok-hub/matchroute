@@ -45,7 +45,7 @@ var (
 )
 
 const (
-	trayClass = "fnportTray"
+	trayClass = "MatchRouteTray"
 
 	wmApp         = 0x8000
 	wmTray        = wmApp + 1 // icon callbacks
@@ -207,7 +207,7 @@ func (t *tray) run() {
 	wc := wndClassEx{WndProc: windows.NewCallback(t.wndProc), Instance: windows.Handle(inst), ClassName: cls}
 	wc.Size = uint32(unsafe.Sizeof(wc))
 	pRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
-	name, _ := windows.UTF16PtrFromString("fnport")
+	name, _ := windows.UTF16PtrFromString("MatchRoute")
 	w, _, _ := pCreateWindowExW.Call(0, uintptr(unsafe.Pointer(cls)), uintptr(unsafe.Pointer(name)), 0, 0, 0, 0, 0, 0, 0, inst, 0)
 	tbc, _ := windows.UTF16PtrFromString("TaskbarCreated")
 	tm, _, _ := pRegisterWindowMessageW.Call(uintptr(unsafe.Pointer(tbc)))
@@ -332,7 +332,7 @@ func (t *tray) menu(hwnd windows.Handle) {
 
 // otherInstance: if fnport already runs, ask it to show its window; true means "quit now"
 func otherInstance() bool {
-	name, _ := windows.UTF16PtrFromString("Local\\fnport-windows")
+	name, _ := windows.UTF16PtrFromString("Local\\matchroute-windows")
 	_, err := windows.CreateMutex(nil, false, name)
 	if err != windows.ERROR_ALREADY_EXISTS {
 		return false

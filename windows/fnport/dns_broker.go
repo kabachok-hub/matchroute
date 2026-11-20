@@ -93,12 +93,13 @@ func (b *winDNSBroker) installIPs(service string, ips []netip.Addr) int {
 		if !vpn.IsRoutableIPv4(ip) || b.addedRoutes[ip] {
 			continue
 		}
-		b.addedRoutes[ip] = true
 		if b.addRoute != nil && !inPrefixes(ip, b.routed) {
-			if err := b.addRoute(netip.PrefixFrom(ip, 32)); err == nil {
-				installed++
+			if err := b.addRoute(netip.PrefixFrom(ip, 32)); err != nil {
+				continue
 			}
+			installed++
 		}
+		b.addedRoutes[ip] = true
 	}
 	return installed
 }

@@ -1,5 +1,4 @@
-// Package icon draws fnport's icon: the letters FP, tall, slanted and gold on a dark rounded
-// square, in the spirit of a game logo but its own. The tray adds a dot in the state's colour.
+// Package icon renders the MatchRoute icon and the tray status indicator.
 package icon
 
 import (
@@ -16,34 +15,16 @@ var (
 	Gray   = color.NRGBA{0x94, 0xa3, 0xb8, 0xff}
 	None   = color.NRGBA{} // no dot
 
-	bgTop    = color.NRGBA{0x1a, 0x1d, 0x2e, 0xff}
-	bgBottom = color.NRGBA{0x08, 0x09, 0x10, 0xff}
-	goldTop  = color.NRGBA{0xff, 0xe4, 0x8f, 0xff}
-	goldBot  = color.NRGBA{0xd9, 0x8f, 0x12, 0xff}
-	edge     = color.NRGBA{0x08, 0x09, 0x10, 0xff}
+	bgTop     = color.NRGBA{0x1a, 0x1d, 0x2e, 0xff}
+	bgBottom  = color.NRGBA{0x08, 0x09, 0x10, 0xff}
+	routeMint = color.NRGBA{0x67, 0xe8, 0xc8, 0xff}
+	edge      = color.NRGBA{0x08, 0x09, 0x10, 0xff}
 )
 
-type pt struct{ x, y float64 }
-
-// letters in a 100x100 box before the slant; P has a hole for its bowl
-var (
-	letterF = []pt{{14, 22}, {47, 16}, {46, 31}, {28, 33}, {28, 46}, {43, 45}, {42, 58}, {28, 59}, {28, 86}, {14, 87}}
-	letterP = []pt{{52, 15}, {77, 13}, {86, 20}, {87, 48}, {80, 56}, {66, 57}, {66, 86}, {52, 87}}
-	holeP   = []pt{{66, 27}, {73, 27}, {73, 44}, {66, 45}}
-)
-
-// slant leans the letters to the right like an italic
-func slant(p pt) pt { return pt{p.x + (50-p.y)*0.13, p.y} }
-
-func inside(poly []pt, x, y float64) bool {
-	in := false
-	for i, j := 0, len(poly)-1; i < len(poly); j, i = i, i+1 {
-		a, b := slant(poly[i]), slant(poly[j])
-		if (a.y > y) != (b.y > y) && x < (b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x {
-			in = !in
-		}
-	}
-	return in
+func routeStroke(x, y, ax, ay, bx, by float64) bool {
+	dx, dy := bx-ax, by-ay
+	t := math.Max(0, math.Min(1, ((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)))
+	return math.Hypot(x-ax-t*dx, y-ay-t*dy) <= 4.5
 }
 
 func lerp(a, b color.NRGBA, t float64) color.NRGBA {
@@ -95,8 +76,13 @@ func sample(x, y float64, dot color.NRGBA) (color.NRGBA, bool) {
 	if !inRoundRect(x, y, 100, 22) {
 		return color.NRGBA{}, false
 	}
-	if (inside(letterF, x, y) || inside(letterP, x, y)) && !inside(holeP, x, y) {
-		return lerp(goldTop, goldBot, (y-14)/74), true
+	if routeStroke(x, y, 23, 68, 48, 43) ||
+		routeStroke(x, y, 48, 43, 69, 64) ||
+		routeStroke(x, y, 48, 43, 72, 20) ||
+		math.Hypot(x-23, y-68) <= 8 ||
+		math.Hypot(x-48, y-43) <= 8 ||
+		math.Hypot(x-72, y-20) <= 8 {
+		return routeMint, true
 	}
 	return lerp(bgTop, bgBottom, y/100), true
 }

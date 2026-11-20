@@ -54,7 +54,7 @@ func (g *gui) show() {
 }
 
 func (win *window) run() {
-	win.w.Option(app.Title("fnport"), app.Size(unit.Dp(880), unit.Dp(660)), app.MinSize(unit.Dp(760), unit.Dp(560)))
+	win.w.Option(app.Title("MatchRoute"), app.Size(unit.Dp(880), unit.Dp(660)), app.MinSize(unit.Dp(760), unit.Dp(560)))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go win.g.ping.run(ctx, func() { changes.Add(1) })
@@ -121,7 +121,7 @@ func (g *gui) closed(win *window) {
 	if st, _ := g.ctl.state(); st == stateOn {
 		text = "Работает в трее. Нажмите на значок, чтобы открыть окно."
 	}
-	g.tray.balloon("fnport", text)
+	g.tray.balloon("MatchRoute", text)
 }
 
 var (

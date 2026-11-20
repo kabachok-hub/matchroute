@@ -89,10 +89,11 @@ const (
 	stateOff state = iota
 	stateStarting
 	stateOn
+	stateStopping
 )
 
 type controller struct {
-	applyMu sync.Mutex
+	applyMu sync.Mutex           // serializes settings changes and engine lifecycle
 	persist func(settings) error // nil uses settings.save; testable persistence boundary
 	mu      sync.Mutex
 	set     settings
@@ -202,12 +203,12 @@ func (c *controller) applyLocked(s settings) error {
 	same := s
 	same.Theme = old.Theme
 	if st == stateOn && !reflect.DeepEqual(same, old) {
-		c.stop()
-		c.start()
+		c.stopLocked()
+		c.startLocked()
 		if st, why := c.state(); st != stateOn {
 			return errorf("настройки сохранены, но включение не удалось: %s", why)
 		}
-	} else {
+	} else if st == stateOff && s.Adapter != old.Adapter {
 		usePhysical(s.Adapter)
 	}
 	changes.Add(1)
@@ -241,6 +242,12 @@ func (c *controller) startFromCheck(rec *settings) error {
 
 // start brings the adapter up and the engine in; a no-op when on
 func (c *controller) start() {
+	c.applyMu.Lock()
+	defer c.applyMu.Unlock()
+	c.startLocked()
+}
+
+func (c *controller) startLocked() {
 	c.mu.Lock()
 	if c.st != stateOff {
 		c.mu.Unlock()
@@ -321,7 +328,7 @@ func (c *controller) start() {
 			}
 		}
 	}
-	cfg.routes = routed
+	cfg.routedPrefixes = routed
 
 	var tunDNS []netip.Addr
 	if set.Connection.Enabled {
@@ -382,7 +389,6 @@ func (c *controller) start() {
 		logf("Сетевой след: запись без глобального перехвата маршрутов")
 	}
 	e.gone = c.addHistory
-	go e.run()
 
 	if set.Connection.Enabled && set.Connection.Protocol == "warp" && set.Warp.ready() {
 		ws := set.Warp.withFake(set)
@@ -423,7 +429,12 @@ func (c *controller) start() {
 	c.mu.Lock()
 	c.st, c.cfg, c.iface, c.dev, c.tcp, c.eng, c.since, c.ticker = stateOn, cfg, info, dev, tcp, e, time.Now(), stop
 	c.mu.Unlock()
-	logf("включено: адаптер «fnport», %d сетей; %s", len(cfg.routes), c.fakeLabel())
+	logf("включено: адаптер «fnport», %d сетей; %s", len(routed), c.fakeLabel())
+	go func() {
+		if err := e.run(); err != nil {
+			c.engineFailed(e, err)
+		}
+	}()
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
 		defer t.Stop()
@@ -441,13 +452,38 @@ func (c *controller) start() {
 
 // stop takes the adapter and its routes down: everything goes direct again
 func (c *controller) stop() {
+	c.applyMu.Lock()
+	defer c.applyMu.Unlock()
+	c.stopLocked()
+}
+
+func (c *controller) engineFailed(e *engine, err error) {
+	c.applyMu.Lock()
+	defer c.applyMu.Unlock()
+	c.mu.Lock()
+	active := c.st == stateOn && c.eng == e
+	c.mu.Unlock()
+	if !active {
+		return
+	}
+	logf("ошибка чтения адаптера: %v", err)
+	c.stopLocked()
+	c.mu.Lock()
+	c.err = fmt.Sprintf("адаптер отключён после ошибки чтения: %v", err)
+	c.mu.Unlock()
+	changes.Add(1)
+}
+
+func (c *controller) stopLocked() {
 	c.mu.Lock()
 	if c.st != stateOn {
 		c.mu.Unlock()
 		return
 	}
 	e, tcp, ticker := c.eng, c.tcp, c.ticker
+	c.st = stateStopping
 	c.mu.Unlock()
+	changes.Add(1)
 
 	flows := e.gameFlows()
 	logf("выключено: %s", e.summary())
@@ -463,16 +499,23 @@ func (c *controller) stop() {
 		c.history = append(c.history, f)
 	}
 	c.trimHistory()
-	c.st, c.eng, c.tcp, c.dev = stateOff, nil, nil, nil
+	c.st, c.eng, c.tcp, c.dev, c.ticker = stateOff, nil, nil, nil, nil
 	c.mu.Unlock()
 	changes.Add(1)
 }
 
 func (c *controller) toggle() {
-	if st, _ := c.state(); st == stateOn {
-		c.stop()
-	} else if st == stateOff {
-		c.start()
+	requested, _ := c.state()
+	c.applyMu.Lock()
+	defer c.applyMu.Unlock()
+	current, _ := c.state()
+	if current != requested {
+		return
+	}
+	if current == stateOn {
+		c.stopLocked()
+	} else if current == stateOff {
+		c.startLocked()
 	}
 }
 

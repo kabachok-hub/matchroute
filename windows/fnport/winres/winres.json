@@ -7,7 +7,7 @@
   "RT_MANIFEST": {
     "#1": {
       "0409": {
-        "description": "fnport",
+        "description": "MatchRoute",
         "minimum-os": "win10",
         "execution-level": "administrator",
         "dpi-awareness": "per monitor v2",
@@ -24,10 +24,10 @@
         },
         "info": {
           "0409": {
-            "FileDescription": "fnport для Windows",
-            "ProductName": "fnport",
+            "FileDescription": "MatchRoute для Windows",
+            "ProductName": "MatchRoute",
             "LegalCopyright": "MIT",
-            "OriginalFilename": "fnport.exe"
+            "OriginalFilename": "MatchRoute.exe"
           }
         }
       }

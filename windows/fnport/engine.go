@@ -31,19 +31,20 @@ const (
 )
 
 type config struct {
-	captureAll  bool // must match installed routes even if the optional trace fails
-	passthrough bool // no probes, no fake: only through the adapter (fnport on the router does the rest)
-	gameRanges  [][2]uint16
-	pairFrom    [2]uint16
-	pairOffset  int
-	qosPort     uint16
-	batch       int
-	maxRounds   int
-	budget      int
-	verdictTTL  time.Duration
-	fakes       []fakes.File
-	fakeTTL     int
-	routes      []netip.Prefix
+	captureAll     bool // must match installed routes even if the optional trace fails
+	passthrough    bool // no probes, no fake: only through the adapter (fnport on the router does the rest)
+	gameRanges     [][2]uint16
+	pairFrom       [2]uint16
+	pairOffset     int
+	qosPort        uint16
+	batch          int
+	maxRounds      int
+	budget         int
+	verdictTTL     time.Duration
+	fakes          []fakes.File
+	fakeTTL        int
+	routes         []netip.Prefix // configured game networks
+	routedPrefixes []netip.Prefix // Windows routes, including optional services and processes
 }
 
 func (c *config) gamePort(p uint16) bool {
@@ -56,6 +57,10 @@ func (c *config) gamePort(p uint16) bool {
 		}
 	}
 	return false
+}
+
+func (c *config) gameDestination(dst netip.AddrPort) bool {
+	return c.gamePort(dst.Port()) && inPrefixes(dst.Addr(), c.routes)
 }
 
 type counters struct {
@@ -176,13 +181,13 @@ func (e *engine) busy(port int) bool {
 	return false
 }
 
-func (e *engine) run() {
+func (e *engine) run() error {
 	go e.watch()
 	buf := make([]byte, 65536)
 	for {
 		n, err := e.dev.ReadPacket(buf)
 		if err != nil {
-			return
+			return err
 		}
 		pkt := buf[:n]
 		switch wnet.IPv4Proto(pkt) {
@@ -221,10 +226,12 @@ func (e *engine) routed(a netip.Addr) bool {
 	if e.cfg.captureAll {
 		return true
 	}
-	for _, r := range e.cfg.routes {
-		if r.Contains(a) {
-			return true
-		}
+	prefixes := e.cfg.routedPrefixes
+	if prefixes == nil {
+		prefixes = e.cfg.routes
+	}
+	if inPrefixes(a, prefixes) {
+		return true
 	}
 	if e.connection != nil && e.connection.leases != nil && e.connection.leases.ServiceOf(a) != "" {
 		return true
@@ -238,7 +245,7 @@ func (e *engine) udp(p wnet.UDPPacket) {
 	f := e.flows[key]
 	isNew := f == nil
 	if isNew {
-		f = &uflow{key: key, game: e.cfg.gamePort(p.Dst.Port()) && inPrefixes(p.Dst.Addr(), e.cfg.routes), last: time.Now(), started: time.Now()}
+		f = &uflow{key: key, game: e.cfg.gameDestination(p.Dst), last: time.Now(), started: time.Now()}
 		f.match = f.game && !(e.cfg.pairOffset != 0 && p.Dst.Port() >= e.cfg.pairFrom[0] && p.Dst.Port() <= e.cfg.pairFrom[1])
 		e.flows[key] = f
 	}

@@ -15,7 +15,7 @@ import (
 )
 
 // Settings live in fnport.json next to the program, with an automatic backup in
-// %LOCALAPPDATA%\fnport\settings-backup.json so keys and subscriptions survive
+// %LOCALAPPDATA%\MatchRoute\settings-backup.json so keys and subscriptions survive
 // updates extracted into a new folder.
 
 type settings struct {
@@ -68,13 +68,13 @@ func appDir() string {
 func settingsPath() string { return filepath.Join(appDir(), "fnport.json") }
 func fakesDir() string     { return filepath.Join(appDir(), "fakes") }
 
-// settingsBackupPath points to %LOCALAPPDATA%\fnport\settings-backup.json; overridden in tests.
+// settingsBackupPath points to %LOCALAPPDATA%\MatchRoute\settings-backup.json; overridden in tests.
 var settingsBackupPath = func() string {
 	dir, err := os.UserCacheDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(dir, "fnport", "settings-backup.json")
+	return filepath.Join(dir, "MatchRoute", "settings-backup.json")
 }
 
 // loadSettings reads local fnport.json over defaults, falling back to %LOCALAPPDATA% backup

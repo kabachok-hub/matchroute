@@ -30,7 +30,7 @@ func main() {
 		return
 	}
 	openLog()
-	logf("fnport для Windows %s запущен", version)
+	logf("MatchRoute для Windows %s запущен", version)
 	registerAppID()
 	winVersion = func() string {
 		v := windows.RtlGetVersion()
@@ -59,7 +59,7 @@ func main() {
 	ctl := newController(set)
 	g := &gui{ctl: ctl}
 	g.check.tunnel = ctl.warpTunnel
-	t := &tray{onOpen: g.show, onToggle: ctl.toggle, onQuit: g.quitApp, accent: icon.Gray, tip: "fnport: выключен",
+	t := &tray{onOpen: g.show, onToggle: ctl.toggle, onQuit: g.quitApp, accent: icon.Gray, tip: "MatchRoute: выключен",
 		isOn: func() bool { st, _ := ctl.state(); return st == stateOn }}
 	g.tray = t
 	go t.run()
@@ -67,11 +67,11 @@ func main() {
 	go func() {
 		for {
 			st, _ := ctl.state()
-			accent, tip := icon.Gray, "fnport: выключен"
+			accent, tip := icon.Gray, "MatchRoute: выключен"
 			if st == stateOn {
-				accent, tip = icon.Green, "fnport: работает"
+				accent, tip = icon.Green, "MatchRoute: работает"
 				if ctl.warn() {
-					accent, tip = icon.Yellow, "fnport: работает, были заморозки"
+					accent, tip = icon.Yellow, "MatchRoute: работает, были заморозки"
 				}
 			}
 			t.set(accent, tip)
@@ -96,15 +96,15 @@ func (g *gui) quitApp() {
 // appID is the name Windows files fnport's notifications under. Without one it goes by the exe's
 // path and keeps the icon it saw first there (an older build's) for good; with one, the name and
 // icon come from the registry, written here on every start.
-const appID = "YUNGSLXRD.fnport"
+const appID = "kabachok-hub.matchroute"
 
 func registerAppID() {
 	dir, err := os.UserCacheDir() // %LOCALAPPDATA%
 	if err != nil {
 		return
 	}
-	dir = filepath.Join(dir, "fnport")
-	png := filepath.Join(dir, "fnport.png")
+	dir = filepath.Join(dir, "MatchRoute")
+	png := filepath.Join(dir, "matchroute.png")
 	if os.MkdirAll(dir, 0o755) != nil || os.WriteFile(png, icon.PNG(256, icon.None), 0o644) != nil {
 		return
 	}
@@ -112,7 +112,7 @@ func registerAppID() {
 	if err != nil {
 		return
 	}
-	k.SetStringValue("DisplayName", "fnport")
+	k.SetStringValue("DisplayName", "MatchRoute")
 	k.SetStringValue("IconUri", png)
 	k.Close()
 	id, _ := windows.UTF16PtrFromString(appID)

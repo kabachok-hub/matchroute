@@ -51,15 +51,15 @@ type palette struct {
 
 var (
 	darkPalette = palette{dark: true,
-		bg: rgb(0x111113), side: rgb(0x18181b), card: rgb(0x1d1d21), field: rgb(0x121214), line: rgb(0x2c2c33),
-		hover: rgb(0x222227), title: rgb(0x26262b),
-		text: rgb(0xececf0), muted: rgb(0x9a9aa4), gray: rgb(0x5a5a64), green: rgb(0x22c55e),
-		greenBg: color.NRGBA{0x22, 0xc5, 0x5e, 0x24}, yellow: rgb(0xeab308), red: rgb(0xef4444), onGreen: rgb(0x0c0c0d),
-		btnHover: rgb(0x3a3a42), primaryHover: rgb(0x16a34a), ringHover: rgb(0x2f6b45)}
+		bg: rgb(0x101827), side: rgb(0x172337), card: rgb(0x1b2b41), field: rgb(0x142036), line: rgb(0x334761),
+		hover: rgb(0x243951), title: rgb(0x2c445e),
+		text: rgb(0xeaf4ff), muted: rgb(0xa1b8d1), gray: rgb(0x7590ad), green: rgb(0x67e8c8),
+		greenBg: color.NRGBA{0x67, 0xe8, 0xc8, 0x24}, yellow: rgb(0xeab308), red: rgb(0xef4444), onGreen: rgb(0x0c0c0d),
+		btnHover: rgb(0x385775), primaryHover: rgb(0x087b72), ringHover: rgb(0x2f6b45)}
 	lightPalette = palette{
-		bg: rgb(0xf4f4f6), side: rgb(0xe9e9ee), card: rgb(0xffffff), field: rgb(0xf4f4f6), line: rgb(0xdcdce3),
-		hover: rgb(0xdedee5), title: rgb(0xdfdfe6),
-		text: rgb(0x18181b), muted: rgb(0x66666f), gray: rgb(0xa1a1aa), green: rgb(0x16a34a),
+		bg: rgb(0xeef5fb), side: rgb(0xddebf6), card: rgb(0xffffff), field: rgb(0xeef5fb), line: rgb(0xc0d6e8),
+		hover: rgb(0xd6e8f6), title: rgb(0xc8e2f3),
+		text: rgb(0x172337), muted: rgb(0x425e75), gray: rgb(0xa1a1aa), green: rgb(0x087b72),
 		greenBg: color.NRGBA{0x16, 0xa3, 0x4a, 0x1c}, yellow: rgb(0xca8a04), red: rgb(0xdc2626), onGreen: rgb(0xffffff),
 		btnHover: rgb(0xcfcfd8), primaryHover: rgb(0x15803d), ringHover: rgb(0x86c79d)}
 )
@@ -97,7 +97,7 @@ const (
 	tabSettings
 )
 
-var tabNames = []string{"Главная", "Сводка", "Журнал", "Подключения", "Настройки"}
+var tabNames = []string{"Обзор", "Сеансы", "Журнал", "Подключения", "Настройки"}
 
 type view struct {
 	switches    map[*widget.Bool]*switchMotion
@@ -114,18 +114,13 @@ type view struct {
 	th                  *material.Theme
 	logo                paint.ImageOp
 	tab                 tab
-	prevTab             tab
 	tabSince            time.Time
 	tabs                [5]widget.Clickable
-	navItemH            int
 	animating           bool // a transition is running: ask for the next frame
 	dark                bool
 	themed              bool
 	sysLight            bool
 	sysChecked          time.Time
-	ringAnim            colorAnim
-	glyphAnim           colorAnim
-	fillAnim            colorAnim
 	titleAnim           colorAnim
 	pingNow             widget.Clickable
 	connProbe           widget.Clickable
@@ -406,7 +401,7 @@ func (v *view) frame(gtx C) {
 	}
 	for i := range v.tabs {
 		if v.tabs[i].Clicked(gtx) && v.tab != tab(i) {
-			v.prevTab, v.tab, v.tabSince = v.tab, tab(i), gtx.Now
+			v.tab, v.tabSince = tab(i), gtx.Now
 			if v.tab == tabSettings {
 				v.draftFor = 0
 			}
@@ -428,8 +423,8 @@ func (v *view) frame(gtx C) {
 	}
 	v.animating = false
 	paint.Fill(gtx.Ops, colBg)
-	layout.Flex{}.Layout(gtx,
-		layout.Rigid(v.sidebar),
+	layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+		layout.Rigid(v.header),
 		layout.Flexed(1, func(gtx C) D {
 			// the page fades in and slides up a little after a tab switch
 			// (no layer at all once the transition is over: an opacity layer costs a render pass)
@@ -457,96 +452,67 @@ func (v *view) frame(gtx C) {
 	}
 }
 
-func (v *view) sidebar(gtx C) D {
-	w := gtx.Dp(200)
-	gtx.Constraints = layout.Exact(image.Pt(w, gtx.Constraints.Max.Y))
-	paint.FillShape(gtx.Ops, colSide, clip.Rect{Max: gtx.Constraints.Max}.Op())
-	glyphs := []glyph{glyphHome, glyphList, glyphLog, glyphCloud, glyphGear}
-	return layout.Inset{Top: 22, Bottom: 18, Left: 14, Right: 14}.Layout(gtx, func(gtx C) D {
-		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-			layout.Rigid(func(gtx C) D {
-				return layout.Inset{Left: 6, Bottom: 24}.Layout(gtx, func(gtx C) D {
-					return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
-						// 96 image pixels shown as 38 dp
-						layout.Rigid(widget.Image{Src: v.logo, Scale: 38.0 / 96}.Layout),
-						hspace(10),
-						layout.Rigid(func(gtx C) D {
-							kids := []layout.FlexChild{
-								layout.Rigid(bold(v.label(18, colText, "fnport")).Layout),
-								layout.Rigid(v.label(11, colMuted, version).Layout),
-							}
-							if up := latestUpdate(); up != "" {
-								kids = append(kids, layout.Rigid(func(gtx C) D {
-									return v.openUpdate.Layout(gtx, v.label(11, colGreen, "доступна v"+up).Layout)
-								}))
-							}
-							return layout.Flex{Axis: layout.Vertical}.Layout(gtx, kids...)
-						}))
-				})
-			}),
-			layout.Rigid(func(gtx C) D { return v.nav(gtx, glyphs) }),
-			layout.Flexed(1, func(gtx C) D { return D{Size: image.Pt(0, gtx.Constraints.Min.Y)} }),
-			layout.Rigid(func(gtx C) D {
-				c, s := v.stateLook()
-				return layout.Inset{Left: 8}.Layout(gtx, func(gtx C) D {
-					return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
-						layout.Rigid(func(gtx C) D { return dot(gtx, c, 8) }),
-						hspace(8),
-						layout.Flexed(1, v.label(13, colMuted, s).Layout))
-				})
-			}))
-	})
+func (v *view) header(gtx C) D {
+	gtx.Constraints.Min.X = gtx.Constraints.Max.X
+	return layout.Stack{}.Layout(gtx,
+		layout.Expanded(func(gtx C) D { return fill(gtx, colSide, 0) }),
+		layout.Stacked(func(gtx C) D {
+			return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+				layout.Rigid(func(gtx C) D {
+					return layout.Inset{Top: 17, Bottom: 14, Left: 24, Right: 24}.Layout(gtx, func(gtx C) D {
+						return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+							layout.Rigid(widget.Image{Src: v.logo, Scale: 34.0 / 96}.Layout),
+							hspace(12),
+							layout.Rigid(bold(v.label(21, colText, "MatchRoute")).Layout),
+							layout.Flexed(1, func(gtx C) D { return D{Size: image.Pt(gtx.Constraints.Min.X, 0)} }),
+							layout.Rigid(func(gtx C) D {
+								if up := latestUpdate(); up != "" {
+									return v.openUpdate.Layout(gtx, v.label(12, colGreen, "Доступна v"+up).Layout)
+								}
+								return mono(v.label(12, colMuted, version)).Layout(gtx)
+							}),
+						)
+					})
+				}),
+				layout.Rigid(func(gtx C) D {
+					return layout.Inset{Left: 24, Right: 24, Bottom: 10}.Layout(gtx, v.navigation)
+				}),
+			)
+		}),
+	)
 }
 
-// nav: the tab buttons; the highlight slides from the old tab to the new one
-func (v *view) nav(gtx C, glyphs []glyph) D {
-	gap := gtx.Dp(4)
-	h := v.navItemH
-	if h == 0 {
-		h = gtx.Dp(42)
-	}
-	t := easeOut(float64(gtx.Now.Sub(v.tabSince)) / float64(tabAnim))
-	if t < 1 {
-		v.animating = true
-	}
-	y := float64(int(v.prevTab)*(h+gap))*(1-t) + float64(int(v.tab)*(h+gap))*t
-	hl := clip.UniformRRect(image.Rect(0, int(y), gtx.Constraints.Max.X, int(y)+h), gtx.Dp(10))
-	paint.FillShape(gtx.Ops, colCard, hl.Op(gtx.Ops))
-
-	var kids []layout.FlexChild
-	for i := range tabNames {
-		i := i
-		kids = append(kids, layout.Rigid(func(gtx C) D {
-			active := v.tab == tab(i)
-			return layout.Inset{Bottom: unit.Dp(4)}.Layout(gtx, func(gtx C) D {
-				d := v.tabs[i].Layout(gtx, func(gtx C) D {
-					gtx.Constraints.Min.X = gtx.Constraints.Max.X
+func (v *view) navigation(gtx C) D {
+	glyphs := [...]glyph{glyphHome, glyphList, glyphLog, glyphCloud, glyphGear}
+	kids := make([]layout.FlexChild, 0, len(tabNames))
+	for i, name := range tabNames {
+		kids = append(kids, layout.Flexed(1, func(gtx C) D {
+			return layout.Inset{Right: 6}.Layout(gtx, func(gtx C) D {
+				return v.tabs[i].Layout(gtx, func(gtx C) D {
+					active := v.tab == tab(i)
+					fg, bg := colMuted, colSide
+					if active {
+						fg, bg = colText, colTitle
+					} else if v.tabs[i].Hovered() {
+						bg = colHover
+					}
 					return layout.Stack{}.Layout(gtx,
-						layout.Expanded(func(gtx C) D {
-							if v.tabs[i].Hovered() && !active {
-								return fill(gtx, colHover, gtx.Dp(10))
-							}
-							return D{Size: gtx.Constraints.Min}
-						}),
+						layout.Expanded(func(gtx C) D { return fill(gtx, bg, gtx.Dp(8)) }),
 						layout.Stacked(func(gtx C) D {
-							c, gc := colMuted, colMuted
-							if active {
-								c, gc = colText, colGreen
-							}
-							return layout.Inset{Top: 11, Bottom: 11, Left: 12, Right: 12}.Layout(gtx, func(gtx C) D {
+							return layout.Inset{Top: 9, Bottom: 9, Left: 10, Right: 10}.Layout(gtx, func(gtx C) D {
 								return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
-									layout.Rigid(func(gtx C) D { return drawGlyph(gtx, glyphs[i], gc, 20, 1.8) }),
-									hspace(12),
-									layout.Rigid(v.label(15, c, tabNames[i]).Layout))
+									layout.Rigid(func(gtx C) D { return drawGlyph(gtx, glyphs[i], fg, 16, 1.8) }),
+									hspace(8),
+									layout.Flexed(1, v.label(14, fg, name).Layout),
+								)
 							})
-						}))
+						}),
+					)
 				})
-				v.navItemH = d.Size.Y
-				return d
 			})
 		}))
 	}
-	return layout.Flex{Axis: layout.Vertical}.Layout(gtx, kids...)
+	return layout.Flex{}.Layout(gtx, kids...)
 }
 
 func (v *view) stateLook() (color.NRGBA, string) {
@@ -554,6 +520,8 @@ func (v *view) stateLook() (color.NRGBA, string) {
 	switch st {
 	case stateStarting:
 		return colYellow, "Включается…"
+	case stateStopping:
+		return colYellow, "Выключается…"
 	case stateOn:
 		if v.ctl.warn() {
 			return colYellow, "Работает, были заморозки"
@@ -574,12 +542,14 @@ func (v *view) title(s string) layout.FlexChild {
 func (v *view) mainTab(gtx C) D {
 	st, errText := v.ctl.state()
 	c, s := v.stateLook()
-	sub, subC := "Игра идёт напрямую, без fnport.", colMuted
+	sub, subC := "Пакеты Fortnite идут по обычному маршруту.", colMuted
 	switch st {
 	case stateStarting:
-		sub = "Создаю адаптер…"
+		sub = "Создаётся адаптер и настраиваются маршруты."
+	case stateStopping:
+		sub = "Восстанавливается обычная маршрутизация."
 	case stateOn:
-		sub = "Игра идёт через fnport: " + v.ctl.fakeLabel() + "."
+		sub = "Обработка игрового трафика включена. " + v.ctl.fakeLabel() + "."
 	}
 	if errText != "" && st == stateOff {
 		sub, subC = "Не включилось: "+errText, colRed
@@ -596,21 +566,26 @@ func (v *view) mainTab(gtx C) D {
 
 func (v *view) mainColumn(gtx C, st state, titleC color.NRGBA, s, sub string, subC color.NRGBA) D {
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-		vspace(6),
-		layout.Rigid(func(gtx C) D { return layout.Center.Layout(gtx, func(gtx C) D { return v.powerButton(gtx, st) }) }),
-		vspace(14),
 		layout.Rigid(func(gtx C) D {
-			return layout.Center.Layout(gtx, bold(v.label(20, titleC, s)).Layout)
+			return v.card(gtx, func(gtx C) D {
+				return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+					layout.Flexed(1, func(gtx C) D {
+						return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+							layout.Rigid(v.label(14, colMuted, "Маршрутизация Fortnite").Layout),
+							vspace(7),
+							layout.Rigid(bold(v.label(29, titleC, s)).Layout),
+							vspace(6),
+							layout.Rigid(v.label(14, subC, sub).Layout),
+						)
+					}),
+					hspace(20),
+					layout.Rigid(func(gtx C) D { return v.powerButton(gtx, st) }),
+				)
+			})
 		}),
-		vspace(4),
-		layout.Rigid(func(gtx C) D {
-			l := v.label(13, subC, sub)
-			l.Alignment = text.Middle
-			return layout.Center.Layout(gtx, l.Layout)
-		}),
-		vspace(22),
+		vspace(16),
 		layout.Rigid(v.beaconsCard),
-		vspace(12),
+		vspace(14),
 		layout.Rigid(v.countersCard),
 		layout.Rigid(func(gtx C) D {
 			s := v.ctl.settings()
@@ -751,56 +726,15 @@ func (v *view) connectionMainCard(gtx C) D {
 	})
 }
 
-// powerButton: a round button with the power symbol; its colours glide between states, and a
-// bright arc runs around the ring while fnport starts
 func (v *view) powerButton(gtx C, st state) D {
-	ring, glyphC, bg := colLine, colMuted, colCard
 	switch st {
-	case stateStarting:
-		ring, glyphC = colLine, colYellow
 	case stateOn:
-		ring, glyphC, bg = colGreen, colGreen, colGreenBg
+		return v.button(gtx, &v.power, "Выключить", false, true)
+	case stateStarting, stateStopping:
+		return v.button(gtx, &v.power, "Подождите…", false, false)
+	default:
+		return v.button(gtx, &v.power, "Включить", true, true)
 	}
-	if v.power.Hovered() && st == stateOff {
-		ring, glyphC = colRingHover, colText
-	}
-	var m1, m2, m3 bool
-	ring, m1 = v.ringAnim.at(gtx.Now, ring)
-	glyphC, m2 = v.glyphAnim.at(gtx.Now, glyphC)
-	bg, m3 = v.fillAnim.at(gtx.Now, bg)
-	v.animating = v.animating || m1 || m2 || m3 || st == stateStarting
-	return v.power.Layout(gtx, func(gtx C) D {
-		d := gtx.Dp(132)
-		sz := image.Pt(d, d)
-		paint.FillShape(gtx.Ops, bg, clip.Ellipse{Max: sz}.Op(gtx.Ops))
-		w := float32(gtx.Dp(3))
-		r := float32(d)/2 - w/2
-		circle := func(c color.NRGBA, from, to float64) {
-			var p clip.Path
-			p.Begin(gtx.Ops)
-			const steps = 72
-			for i := 0; i <= steps; i++ {
-				a := from + (to-from)*float64(i)/steps
-				q := f32.Pt(float32(d)/2+r*float32(math.Sin(a)), float32(d)/2-r*float32(math.Cos(a)))
-				if i == 0 {
-					p.MoveTo(q)
-				} else {
-					p.LineTo(q)
-				}
-			}
-			paint.FillShape(gtx.Ops, c, clip.Stroke{Path: p.End(), Width: w}.Op())
-		}
-		circle(ring, 0, 2*math.Pi)
-		if st == stateStarting {
-			a := float64(gtx.Now.UnixMilli()%1000) / 1000 * 2 * math.Pi
-			circle(colYellow, a, a+math.Pi*0.6)
-		}
-		g := gtx.Dp(56)
-		off := (d - g) / 2
-		defer pushOffset(gtx, off, off).Pop()
-		drawGlyph(gtx, glyphPower, glyphC, 56, 2.4)
-		return D{Size: sz}
-	})
 }
 
 func pingColor(b beacon) (color.NRGBA, string) {
@@ -1211,7 +1145,7 @@ func (v *view) settingsTab(gtx C) D {
 			} else {
 				v.checkMsg = "fnport включён. Можно искать матч."
 				v.draftFor = 0
-				v.prevTab, v.tab, v.tabSince = v.tab, tabMain, gtx.Now
+				v.tab, v.tabSince = tabMain, gtx.Now
 				v.animating = true
 			}
 		default:
@@ -1446,7 +1380,7 @@ func (v *view) fakeCard(gtx C) D {
 // aboutCard: the version and the license texts of what is built into the program
 func (v *view) aboutCard(gtx C) D {
 	return v.card(gtx, func(gtx C) D {
-		kids := v.sectionTitle("О программе", "fnport "+version+", открытый код: github.com/YUNGSLXRD/fnport. "+
+		kids := v.sectionTitle("О программе", "MatchRoute "+version+" — Windows-версия на основе fnport от YUNGSLXRD (MIT). "+
 			"Внутри Wintun, gVisor, Gio, шрифт Inter и другие библиотеки с открытыми лицензиями.")
 		kids = append(kids, layout.Rigid(func(gtx C) D { return v.button(gtx, &v.licenses, "Лицензии", false, true) }))
 		return layout.Flex{Axis: layout.Vertical}.Layout(gtx, kids...)
