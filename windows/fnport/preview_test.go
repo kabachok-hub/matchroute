@@ -55,9 +55,9 @@ func TestPreview(t *testing.T) {
 		{City: "Париж", Addr: netip.MustParseAddr("13.37.148.3"), Checked: true},
 	}}
 	for _, l := range []string{
-		"fnport для Windows dev запущен",
+		"MatchRoute для Windows dev запущен",
 		"интернет идёт через «Ethernet» (Realtek Gaming 2.5GbE Family Controller)",
-		"включено: адаптер «fnport», маршруты на AWS в Европе; фейк quic_initial_vk_com.bin, TTL 5",
+		"включено: адаптер «MatchRoute», маршруты на AWS в Европе; фейк quic_initial_vk_com.bin, TTL 5",
 		"проверка 18.157.38.117:15036 через игровой порт: годных 1, замёрзло 1, без ответа 0 (1330 мс)",
 		"игра 18.157.38.117:15036 (у игры порт 60325) -> порт 42844, порт проверен за 3993 мс",
 		"соединение 18.156.212.171:9106 с порта 51101 замёрзло (ушло 64, пришло 25)",

@@ -248,7 +248,7 @@ func Interfaces() []IfaceInfo {
 	}
 	var out []IfaceInfo
 	for _, ifc := range ifs {
-		if ifc.Flags&net.FlagUp == 0 || ifc.Flags&net.FlagLoopback != 0 || strings.HasPrefix(ifc.Name, "fnport") {
+		if ifc.Flags&net.FlagUp == 0 || ifc.Flags&net.FlagLoopback != 0 || IsAppAdapter(ifc.Name) {
 			continue
 		}
 		info := IfaceInfo{Index: uint32(ifc.Index), Alias: ifc.Name}

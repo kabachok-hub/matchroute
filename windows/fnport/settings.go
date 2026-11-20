@@ -65,7 +65,7 @@ func appDir() string {
 	return "."
 }
 
-func settingsPath() string { return filepath.Join(appDir(), "fnport.json") }
+func settingsPath() string { return filepath.Join(appDir(), "matchroute.json") }
 func fakesDir() string     { return filepath.Join(appDir(), "fakes") }
 
 // settingsBackupPath points to %LOCALAPPDATA%\MatchRoute\settings-backup.json; overridden in tests.
@@ -77,10 +77,15 @@ var settingsBackupPath = func() string {
 	return filepath.Join(dir, "MatchRoute", "settings-backup.json")
 }
 
-// loadSettings reads local fnport.json over defaults, falling back to %LOCALAPPDATA% backup
+// loadSettings reads local matchroute.json over defaults, falling back to %LOCALAPPDATA% backup
 // when starting in a freshly extracted release folder without a local fnport.json.
 func loadSettings() settings {
-	return loadSettingsFrom(settingsPath(), settingsBackupPath())
+	backup := settingsBackupPath()
+	legacy := filepath.Join(appDir(), "fnport.json")
+	if _, err := os.Stat(legacy); err == nil {
+		backup = legacy
+	}
+	return loadSettingsFrom(settingsPath(), backup)
 }
 
 func loadSettingsFrom(localFile, backupFile string) settings {
@@ -101,7 +106,7 @@ func loadSettingsFrom(localFile, backupFile string) settings {
 		if restoredFromBackup {
 			return defaultSettings()
 		}
-		logf("fnport.json не прочитан (%v), настройки по умолчанию", err)
+		logf("matchroute.json не прочитан (%v), настройки по умолчанию", err)
 		return defaultSettings()
 	}
 	s.Routes = upgradeDefaultGameRoutes(s.Routes)

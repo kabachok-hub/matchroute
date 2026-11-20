@@ -1,5 +1,5 @@
 name: Отчёт о провайдере
-description: Результат «Проверки провайдера» из LuCI или программы для Windows — помогает понять, как fnport работает у разных провайдеров
+description: Результат «Проверки провайдера» из LuCI или MatchRoute для Windows
 title: "Провайдер: "
 labels: [ "provider-report" ]
 body:
@@ -31,12 +31,12 @@ body:
   - type: dropdown
     id: setup
     attributes:
-      label: Где стоит fnport
+      label: Где установлена программа
       options:
         - Основной роутер OpenWrt
         - OpenWrt за другим роутером
         - OpenWrt в виртуальной машине на ПК
-        - Программа fnport для Windows
+        - MatchRoute для Windows
         - Другое
     validations:
       required: true

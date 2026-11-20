@@ -921,7 +921,7 @@ func (v *view) warpModePanel(gtx C) D {
 	dotColor := colMuted
 	headline := "Ключ WARP ещё не получен: нажмите «Получить ключ WARP»."
 	if s.Warp.ready() {
-		headline = "Ключ WARP сохранён. Туннель подключится, когда вы включите fnport."
+		headline = "Ключ WARP сохранён. Туннель подключится, когда вы включите MatchRoute."
 	}
 	if st == stateOn {
 		if ws := v.ctl.warpStatus(false); ws != "" {
@@ -1141,7 +1141,7 @@ func (v *view) connectionsBody(gtx C) D {
 			if disabled {
 				gtx = gtx.Disabled()
 			}
-			kids := v.sectionTitle("Что направлять через подключение", "Матчи Fortnite всегда идут напрямую через fnport без лишнего пинга.")
+			kids := v.sectionTitle("Что направлять через подключение", "Игровой UDP Fortnite обрабатывается отдельно от выбранного VPN-подключения.")
 			kids = append(kids, layout.Rigid(func(gtx C) D {
 				return v.switchRow(gtx, &cv.epic, "Сервисы Epic", "Вход в аккаунт, магазин, обновления и голосовой чат пати")
 			}))

@@ -113,7 +113,7 @@ func connectionConfig(s connectionSettings, iface string, port int, user, passwo
 		}
 		tag, _ := root["tag"].(string)
 		if tag == "" {
-			tag = "fnport-out"
+			tag = "matchroute-out"
 			root["tag"] = tag
 		}
 		if final != "" && final != tag {
@@ -197,7 +197,7 @@ func connectionConfig(s connectionSettings, iface string, port int, user, passwo
 		}
 	}
 	root["route"] = routeObj
-	root["inbounds"] = []any{map[string]any{"type": "socks", "tag": "fnport-local", "listen": "127.0.0.1", "listen_port": port,
+	root["inbounds"] = []any{map[string]any{"type": "socks", "tag": "matchroute-local", "listen": "127.0.0.1", "listen_port": port,
 		"users": []any{map[string]any{"username": user, "password": password}}}}
 	b, err := json.Marshal(root)
 	if err != nil {

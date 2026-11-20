@@ -187,7 +187,7 @@ func FetchSubscription(
 		}
 	}
 	if strings.EqualFold(resp.Header.Get("x-hwid-not-supported"), "true") {
-		return nil, errors.New("панель не приняла идентификатор устройства fnport")
+		return nil, errors.New("панель подписки не приняла идентификатор устройства")
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("подписка недоступна (HTTP %d)", resp.StatusCode)

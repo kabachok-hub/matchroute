@@ -60,7 +60,7 @@ func OpenTunWithDNS(name string, routes []netip.Prefix, dns []netip.Addr) (Dev, 
 	if p := WintunMissing(); p != "" {
 		return nil, netip.Addr{}, errors.New(p)
 	}
-	tun.WintunTunnelType = "fnport" // adapter type fnport, not WireGuard
+	tun.WintunTunnelType = AdapterName
 	dev, err := tun.CreateTUN(name, 1420)
 	if err != nil {
 		return nil, netip.Addr{}, wintunErr(err)

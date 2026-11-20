@@ -15,6 +15,6 @@ var licensesText string
 
 // writeLicenses: the texts as a file Notepad can open
 func writeLicenses() (string, error) {
-	p := filepath.Join(os.TempDir(), "fnport-licenses.txt")
+	p := filepath.Join(os.TempDir(), "matchroute-licenses.txt")
 	return p, os.WriteFile(p, []byte(licensesText), 0o644)
 }

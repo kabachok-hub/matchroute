@@ -941,15 +941,15 @@ func (v *view) summary(gtx C) D {
 		}),
 		layout.Flexed(1, func(gtx C) D {
 			if len(flows) == 0 {
-				return v.card(gtx, v.label(14, colMuted, "Соединений игры пока не было. Включите fnport и зайдите в матч: здесь появятся "+
-					"серверы, их города и порты, которые нашёл fnport.").Layout)
+				return v.card(gtx, v.label(14, colMuted, "Соединений игры пока не было. Включите MatchRoute и зайдите в матч: здесь появятся "+
+					"серверы, их города и порты, которые нашёл MatchRoute.").Layout)
 			}
 			head := func(s string) material.LabelStyle { return v.label(12, colMuted, s) }
 			gtx.Constraints.Min = gtx.Constraints.Max
 			return v.card(gtx, func(gtx C) D {
 				return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 					layout.Rigid(func(gtx C) D {
-						return v.tableRow(gtx, []material.LabelStyle{head("Сервер"), head("Город"), head("Порт игры → fnport"),
+						return v.tableRow(gtx, []material.LabelStyle{head("Сервер"), head("Город"), head("Порты игры и MatchRoute"),
 							head("Пакеты ↑ / ↓"), head("Начало"), head("Состояние")})
 					}),
 					vspace(8),
@@ -1143,7 +1143,7 @@ func (v *view) settingsTab(gtx C) D {
 			if err != nil {
 				v.checkMsg = err.Error()
 			} else {
-				v.checkMsg = "fnport включён. Можно искать матч."
+				v.checkMsg = "MatchRoute включён. Можно искать матч."
 				v.draftFor = 0
 				v.tab, v.tabSince = tabMain, gtx.Now
 				v.animating = true
@@ -1168,7 +1168,7 @@ func (v *view) settingsTab(gtx C) D {
 		if st != stateStarting {
 			done := make(chan error, 1)
 			v.checkDone = done
-			v.checkMsg, v.checkErr = "Включаю fnport…", false
+			v.checkMsg, v.checkErr = "Включаю MatchRoute…", false
 			rec := res.Recommend
 			go func() {
 				done <- v.ctl.startFromCheck(rec)
@@ -1228,17 +1228,17 @@ func (v *view) sectionTitle(s, hint string) []layout.FlexChild {
 func checkNextStep(r *checkResult, st state) (string, string) {
 	if r.Recommend != nil {
 		if st == stateOn {
-			return "Применить настройки", "fnport уже включён. Применение рекомендации может перезапустить соединения."
+			return "Применить настройки", "MatchRoute уже включён. Применение рекомендации может перезапустить соединения."
 		}
-		return "Применить и включить fnport", "Кнопка сохранит рекомендованные фейк и TTL и включит fnport."
+		return "Применить и включить MatchRoute", "Кнопка сохранит рекомендованные фейк и TTL и включит MatchRoute."
 	}
 	if st == stateOn {
-		return "fnport уже включён", "Попробуйте найти матч. Если не получится, скопируйте отчёт после попытки."
+		return "MatchRoute уже включён", "Попробуйте найти матч. Если не получится, скопируйте отчёт после попытки."
 	}
 	if r.Freeze == "no_reply" || r.Freeze == "unclear" || r.Freeze == "" {
 		return "Включить с текущими настройками", "Проверка не дала определённого результата. Можно попробовать текущие настройки в игре."
 	}
-	return "Включить fnport", "Проверка не предложила менять настройки. Включите fnport и попробуйте найти матч."
+	return "Включить MatchRoute", "Проверка не предложила менять настройки. Включите MatchRoute и попробуйте найти матч."
 }
 
 func (v *view) checkCard(gtx C, running bool, lines []string, res *checkResult, wait time.Duration) D {
@@ -1260,7 +1260,7 @@ func (v *view) checkCard(gtx C, running bool, lines []string, res *checkResult, 
 			action, hint := checkNextStep(res, st)
 			canStart := st != stateStarting && (st != stateOn || res.Recommend != nil) && v.checkDone == nil
 			if v.checkDone != nil {
-				action = "Включаю fnport…"
+				action = "Включаю MatchRoute…"
 			}
 			kids = append(kids, vspace(12), layout.Rigid(v.label(13, colMuted, hint).Layout), vspace(8),
 				layout.Rigid(func(gtx C) D { return v.button(gtx, &v.applyCheck, action, true, canStart) }))
@@ -1338,7 +1338,7 @@ func (v *view) adapterCard(gtx C) D {
 		auto = "Автоматически"
 	}
 	return v.card(gtx, func(gtx C) D {
-		kids := v.sectionTitle("Сетевой адаптер", "Через какой адаптер fnport выходит в интернет.")
+		kids := v.sectionTitle("Сетевой адаптер", "Через какой адаптер MatchRoute выходит в интернет.")
 		kids = append(kids, v.radio("", auto, &v.adapter))
 		for _, a := range v.adapters {
 			s := a.Alias
@@ -1380,7 +1380,7 @@ func (v *view) fakeCard(gtx C) D {
 // aboutCard: the version and the license texts of what is built into the program
 func (v *view) aboutCard(gtx C) D {
 	return v.card(gtx, func(gtx C) D {
-		kids := v.sectionTitle("О программе", "MatchRoute "+version+" — Windows-версия на основе fnport от YUNGSLXRD (MIT). "+
+		kids := v.sectionTitle("О программе", "MatchRoute "+version+" — Windows-приложение на основе открытого проекта YUNGSLXRD (MIT). "+
 			"Внутри Wintun, gVisor, Gio, шрифт Inter и другие библиотеки с открытыми лицензиями.")
 		kids = append(kids, layout.Rigid(func(gtx C) D { return v.button(gtx, &v.licenses, "Лицензии", false, true) }))
 		return layout.Flex{Axis: layout.Vertical}.Layout(gtx, kids...)
@@ -1428,7 +1428,7 @@ func (v *view) advancedCard(gtx C) D {
 	return v.card(gtx, func(gtx C) D {
 		kids := v.sectionTitle("Дополнительно", "Менять, только если понимаете зачем. «Отменить изменения» вернёт сохранённое.")
 		kids = append(kids,
-			labeled("Сети, которые идут через fnport (по одной в строке)", func(gtx C) D { return v.field(gtx, &v.routes, "3.0.0.0/8", 6) }),
+			labeled("Сети, которые идут через MatchRoute (по одной в строке)", func(gtx C) D { return v.field(gtx, &v.routes, "3.0.0.0/8", 6) }),
 			labeled("Порты игровых серверов", func(gtx C) D { return v.field(gtx, &v.ports, "9000-9999, 15000-15999", 1) }),
 			layout.Rigid(func(gtx C) D {
 				return layout.Flex{}.Layout(gtx,
@@ -1438,7 +1438,7 @@ func (v *view) advancedCard(gtx C) D {
 			}),
 			vspace(12),
 			layout.Rigid(func(gtx C) D {
-				cb := material.CheckBox(v.th, &v.passthru, "Только пропуск через адаптер, без проверок и фейка (их делает fnport на роутере)")
+				cb := material.CheckBox(v.th, &v.passthru, "Только пропуск через адаптер, без проверок и фейка (обработка выполняется на роутере)")
 				cb.Color, cb.IconColor, cb.Size = colText, colGreen, unit.Dp(20)
 				return cb.Layout(gtx)
 			}))

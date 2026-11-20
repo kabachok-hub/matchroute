@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -68,9 +67,9 @@ func openLog() {
 	if exe, err := os.Executable(); err == nil {
 		dir = filepath.Dir(exe)
 	}
-	p := filepath.Join(dir, "fnport.log")
+	p := filepath.Join(dir, "matchroute.log")
 	if st, err := os.Stat(p); err == nil && st.Size() > 2<<20 {
-		os.Rename(p, filepath.Join(dir, "fnport.old.log"))
+		os.Rename(p, filepath.Join(dir, "matchroute.old.log"))
 	}
 	f, err := os.OpenFile(p, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
@@ -141,7 +140,7 @@ func physical(name string) (wnet.IfaceInfo, error) {
 	}
 	// with fnport on, AWS is routed into its own adapter: the way out is the one it started with.
 	// Taking fnport's adapter here would send its own sockets back into it
-	if strings.HasPrefix(info.Alias, "fnport") {
+	if wnet.IsAppAdapter(info.Alias) {
 		for _, i := range wnet.Interfaces() {
 			if i.Index == wnet.PhysIndex {
 				return i, nil
@@ -184,7 +183,7 @@ func (c *controller) applyLocked(s settings) error {
 	c.mu.Lock()
 	if c.st == stateStarting {
 		c.mu.Unlock()
-		return errorf("дождитесь завершения включения fnport и примените настройки снова")
+		return errorf("дождитесь завершения включения MatchRoute и примените настройки снова")
 	}
 	save := c.persist
 	if save == nil {
@@ -192,7 +191,7 @@ func (c *controller) applyLocked(s settings) error {
 	}
 	if err := save(s); err != nil {
 		c.mu.Unlock()
-		return errorf("не сохранить fnport.json: %v", err)
+		return errorf("не сохранить matchroute.json: %v", err)
 	}
 	old, st := c.set, c.st
 	c.set = s
@@ -233,7 +232,7 @@ func (c *controller) startFromCheck(rec *settings) error {
 	st, why := c.state()
 	if st != stateOn {
 		if why == "" {
-			why = "Дождитесь завершения включения fnport и попробуйте снова."
+			why = "Дождитесь завершения включения MatchRoute и попробуйте снова."
 		}
 		return errorf("%s", why)
 	}
@@ -334,7 +333,7 @@ func (c *controller) startLocked() {
 	if set.Connection.Enabled {
 		tunDNS = []netip.Addr{wnet.TunDNSAddr}
 	}
-	dev, clientIP, err := wnet.OpenTunWithDNS("fnport", routed, tunDNS)
+	dev, clientIP, err := wnet.OpenTunWithDNS(wnet.AdapterName, routed, tunDNS)
 	if err != nil {
 		fail(err)
 		return
@@ -429,7 +428,7 @@ func (c *controller) startLocked() {
 	c.mu.Lock()
 	c.st, c.cfg, c.iface, c.dev, c.tcp, c.eng, c.since, c.ticker = stateOn, cfg, info, dev, tcp, e, time.Now(), stop
 	c.mu.Unlock()
-	logf("включено: адаптер «fnport», %d сетей; %s", len(routed), c.fakeLabel())
+	logf("включено: адаптер «%s», %d сетей; %s", wnet.AdapterName, len(routed), c.fakeLabel())
 	go func() {
 		if err := e.run(); err != nil {
 			c.engineFailed(e, err)
@@ -599,7 +598,7 @@ func (c *controller) fakeLabel() string {
 	s := c.settings()
 	switch {
 	case s.Passthrough:
-		return "без проверок и фейка (их делает fnport на роутере)"
+		return "без проверок и фейка (обработка выполняется на роутере)"
 	case s.Fake == "":
 		return "без фейка"
 	}

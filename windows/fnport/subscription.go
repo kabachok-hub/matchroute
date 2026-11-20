@@ -38,7 +38,7 @@ func subscriptionDeviceIDAt(idFile string) (string, error) {
 func subscriptionDeviceID() (string, error) {
 	dir, err := os.UserCacheDir()
 	if err != nil {
-		return "", errors.New("недоступна папка данных fnport")
+		return "", errors.New("недоступна папка данных MatchRoute")
 	}
 	return vpn.DeviceIDAt(filepath.Join(dir, "fnport", "subscription-device-id"))
 }

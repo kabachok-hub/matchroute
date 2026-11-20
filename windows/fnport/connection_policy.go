@@ -323,7 +323,7 @@ func (c *controller) connectionStatus() string {
 			tr.mu.Lock()
 			code := tr.exitCode
 			tr.mu.Unlock()
-			return fmt.Sprintf("ядро завершилось (код %d) — перезапустите fnport", code)
+			return fmt.Sprintf("ядро завершилось (код %d) — перезапустите MatchRoute", code)
 		default:
 		}
 	}

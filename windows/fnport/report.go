@@ -16,7 +16,7 @@ import (
 // settings and the counters, and the recent log with every address replaced by its AWS city
 // or x.x.x.x. Nothing in it points at the user's network.
 
-const issueURL = "https://github.com/kabachok-hub/matchroute/issues/new?template=provider-report.yml&setup=%D0%9F%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B0%20fnport%20%D0%B4%D0%BB%D1%8F%20Windows"
+const issueURL = "https://github.com/kabachok-hub/matchroute/issues/new?template=provider-report.yml&setup=MatchRoute%20%D0%B4%D0%BB%D1%8F%20Windows"
 
 // winVersion: "Windows 10.0.22631" (set by main_windows.go)
 var winVersion = func() string { return "" }
@@ -55,7 +55,7 @@ func joinReplies(rs []int) string {
 func (c *controller) report(r *checkResult) string {
 	var b strings.Builder
 	line := func(k, v string) { fmt.Fprintf(&b, "**%s**: %s\n", k, v) }
-	head := "**fnport для Windows** " + version
+	head := "**MatchRoute для Windows** " + version
 	if v := winVersion(); v != "" {
 		head += ", " + v
 	}
@@ -92,13 +92,13 @@ func (c *controller) report(r *checkResult) string {
 		if proto == "warp" {
 			st := maskAddresses(c.warpStatus(true))
 			if st == "" {
-				st = "включён в настройках, fnport сейчас выключен"
+				st = "включён в настройках, MatchRoute сейчас выключен"
 			}
 			line("Подключение (WARP)", st)
 		} else {
 			st := maskAddresses(c.connectionStatus())
 			if st == "" || st == "Подключение выключено." {
-				st = "включено в настройках, fnport сейчас выключен"
+				st = "включено в настройках, MatchRoute сейчас выключен"
 			}
 			line("Подключение ("+vpn.ProtocolLabel(proto)+")", st)
 		}

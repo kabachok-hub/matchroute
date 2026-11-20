@@ -12,8 +12,8 @@ import (
 // zip (Windows unpacks the exe alone) or an antivirus took the DLL away, and got
 // "Error loading wintun.dll DLL"; these say what to do instead.
 
-const wintunUnpack = "распакуйте архив целиком в обычную папку и запускайте fnport.exe оттуда, не из архива. " +
-	"Если файл пропадает после распаковки, его убирает антивирус: верните его из карантина и добавьте папку в исключения."
+const wintunUnpack = "распакуйте архив целиком в обычную папку и запускайте MatchRoute.exe оттуда, не из архива. " +
+	"Если файл пропадает после распаковки, проверьте журнал антивируса и контрольную сумму архива."
 
 // WintunProblem: why the adapter cannot be made from dir, or "" when wintun.dll is there
 func WintunProblem(dir string) string {
@@ -22,9 +22,9 @@ func WintunProblem(dir string) string {
 	case err == nil && st.Size() > 0:
 		return ""
 	case err == nil || errors.Is(err, os.ErrNotExist):
-		return "Рядом с fnport.exe нет wintun.dll: " + wintunUnpack
+		return "Рядом с MatchRoute.exe нет wintun.dll: " + wintunUnpack
 	}
-	return fmt.Sprintf("wintun.dll рядом с fnport.exe не читается (%v): %s", err, wintunUnpack)
+	return fmt.Sprintf("wintun.dll рядом с MatchRoute.exe не читается (%v): %s", err, wintunUnpack)
 }
 
 // WintunMissing: WintunProblem for the running program's folder

@@ -47,7 +47,7 @@ func main() {
 	set := loadSettings()
 	if !wnet.IsElevated() {
 		// the manifest asks for administrator rights; without them the adapter cannot be made
-		logf("нет прав администратора: включить fnport не получится")
+		logf("нет прав администратора: включить MatchRoute не получится")
 	}
 	wintunCheck = wnet.WintunMissing
 	if p := wnet.WintunMissing(); p != "" {
